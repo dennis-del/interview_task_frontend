@@ -3,14 +3,11 @@ import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createEventApi, updateEventApi, type EventResponse, type EventPayload } from "../../api/admin/eventApi";
 
-
-
 interface EventFormModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    initialData?: EventResponse; // includes id, participants, waitlist
-  }
-  
+  isOpen: boolean;
+  onClose: () => void;
+  initialData?: EventResponse;
+}
 
 const EventFormModal: React.FC<EventFormModalProps> = ({
   isOpen,
@@ -34,13 +31,38 @@ const EventFormModal: React.FC<EventFormModalProps> = ({
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
+    } else {
+      // Reset form when opening modal without initial data (create mode)
+      setFormData({
+        title: "",
+        description: "",
+        image: "",
+        date: "",
+        time: "",
+        venue: "",
+        organiser: "",
+        participantLimit: 0,
+        status: "Confirmed",
+      });
     }
-  }, [initialData]);
+  }, [initialData, isOpen]); // Added isOpen dependency
 
   const createMutation = useMutation({
     mutationFn: createEventApi,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
+      // Reset form after successful creation
+      setFormData({
+        title: "",
+        description: "",
+        image: "",
+        date: "",
+        time: "",
+        venue: "",
+        organiser: "",
+        participantLimit: 0,
+        status: "Confirmed",
+      });
       onClose();
     },
   });
@@ -53,6 +75,23 @@ const EventFormModal: React.FC<EventFormModalProps> = ({
       onClose();
     },
   });
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData({
+        title: "",
+        description: "",
+        image: "",
+        date: "",
+        time: "",
+        venue: "",
+        organiser: "",
+        participantLimit: 0,
+        status: "Confirmed",
+      });
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

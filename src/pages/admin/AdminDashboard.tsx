@@ -18,6 +18,9 @@ const AdminDashboard: React.FC = () => {
   const queryClient = useQueryClient();
 
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editEvent, setEditEvent] = useState<EventResponse | null>(null);
+  const [isParticipantsModalOpen, setIsParticipantsModalOpen] = useState(false);
 
   const { data: events = [], isLoading } = useQuery<EventResponse[]>({
     queryKey: ["events"],
@@ -31,16 +34,17 @@ const AdminDashboard: React.FC = () => {
     },
   });
 
-  // Participants query
-  const { data: participants = [] } = useQuery<
-    ParticipantPayload[]
-  >({
+  // Participants query - only fetch when modal is open
+  const {
+    data: participants = [],
+    isLoading: isLoadingParticipants,
+  } = useQuery<ParticipantPayload[]>({
     queryKey: ["participants", selectedEventId],
     queryFn: () => {
       if (!selectedEventId) return [];
       return getParticipantsApi(selectedEventId);
     },
-    enabled: !!selectedEventId, // Only run query when selectedEventId is truthy
+    enabled: !!selectedEventId && isParticipantsModalOpen, // Only fetch when modal is open
   });
 
   // Bulk update participants mutation
@@ -58,10 +62,6 @@ const AdminDashboard: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
     },
   });
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editEvent, setEditEvent] = useState<EventResponse | null>(null);
-  const [isParticipantsModalOpen, setIsParticipantsModalOpen] = useState(false);
 
   if (isLoading) return <p>Loading...</p>;
 
@@ -224,7 +224,7 @@ const AdminDashboard: React.FC = () => {
           onBulkUpdate={(ids, status) => {
             bulkUpdateMutation.mutate({ ids, status });
           }}
-          isLoading={bulkUpdateMutation.isPending}
+          isLoading={bulkUpdateMutation.isPending || isLoadingParticipants}
         />
       )}
     </div>
