@@ -13,9 +13,11 @@ import {
 } from "../../api/admin/viewParticipantApi";
 import EventFormModal from "../../components/admin/EventFormModal";
 import ParticipantsModal from "../../components/admin/ParticipantsModal";
+import { useAuth } from "../../context/AuthContext"; // Import useAuth
 
 const AdminDashboard: React.FC = () => {
   const queryClient = useQueryClient();
+  const { user, logout } = useAuth(); // Get logout function from auth context
 
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,6 +83,23 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header with Logout */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
+        <button
+          onClick={() => {
+            logout();
+            window.location.href = '/';
+          }}
+          className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span>Logout</span>
+        </button>
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-4 rounded-xl shadow">
