@@ -17,7 +17,7 @@ import { useAuth } from "../../context/AuthContext"; // Import useAuth
 
 const AdminDashboard: React.FC = () => {
   const queryClient = useQueryClient();
-  const { user, logout } = useAuth(); // Get logout function from auth context
+  const { logout } = useAuth(); // Get logout function from auth context
 
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
