@@ -1,7 +1,7 @@
 import axios from "axios";
  
  
-const baseURL = "http://localhost:9001";
+const baseURL = "https://interview-task-backend-shrc.onrender.com";
  
  
 const axiosIns = axios.create({
