@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { signupApi, loginApi } from "../../../frontend/src/api/Auth";
+import { signupApi, loginApi } from "../api/Auth";
 
 const Auth: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -37,7 +37,7 @@ const Auth: React.FC = () => {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: loginApi,
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       console.log("Login successful:", data);
       if (data.user) {
         login(data.user);
