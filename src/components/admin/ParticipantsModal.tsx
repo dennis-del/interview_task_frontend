@@ -41,7 +41,15 @@ const ParticipantsModal: React.FC<ParticipantsModalProps> = ({
 
         {isLoading && <p>Loading participants...</p>}
         {!isLoading && participants.length === 0 && (
-          <p className="text-gray-500">No participants found</p>
+          <div>
+            <p className="text-gray-500">No participants found</p>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-400 rounded hover:bg-gray-500"
+            >
+              Close
+            </button>
+          </div>
         )}
 
         {!isLoading && participants.length > 0 && (
