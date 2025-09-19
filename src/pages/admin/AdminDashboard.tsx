@@ -32,7 +32,7 @@ const AdminDashboard: React.FC = () => {
   });
 
   // Participants query
-  const { data: participants = [], refetch: refetchParticipants } = useQuery<
+  const { data: participants = [] } = useQuery<
     ParticipantPayload[]
   >({
     queryKey: ["participants", selectedEventId],

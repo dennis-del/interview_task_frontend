@@ -117,7 +117,7 @@ const ParticipantDashboard: React.FC = () => {
   // 🔹 Fixed Register Mutation
   const registerMutation = useMutation({
     mutationFn: registerParticipantApi,
-    onSuccess: (data, variables) => {
+    onSuccess: (data) => {
       console.log("Registration successful:", data);
       
       // Invalidate both queries to refetch fresh data
