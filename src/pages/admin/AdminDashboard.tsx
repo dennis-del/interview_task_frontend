@@ -1,5 +1,5 @@
 // src/pages/admin/AdminDashboard.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getEventsApi,
@@ -13,21 +13,45 @@ import {
 } from "../../api/admin/viewParticipantApi";
 import EventFormModal from "../../components/admin/EventFormModal";
 import ParticipantsModal from "../../components/admin/ParticipantsModal";
-import { useAuth } from "../../context/AuthContext"; // Import useAuth
+import { useAuth } from "../../context/AuthContext";
 
 const AdminDashboard: React.FC = () => {
   const queryClient = useQueryClient();
-  const { logout } = useAuth(); // Get logout function from auth context
+  const { logout } = useAuth();
 
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<EventResponse | null>(null);
   const [isParticipantsModalOpen, setIsParticipantsModalOpen] = useState(false);
+  const [eventParticipantCounts, setEventParticipantCounts] = useState<{[key: number]: number}>({});
 
   const { data: events = [], isLoading } = useQuery<EventResponse[]>({
     queryKey: ["events"],
     queryFn: getEventsApi,
   });
+
+  // Fetch participants for all events to get accurate counts
+  useEffect(() => {
+    const fetchParticipantCounts = async () => {
+      if (events.length === 0) return;
+      
+      const counts: {[key: number]: number} = {};
+      
+      for (const event of events) {
+        try {
+          const participants = await getParticipantsApi(event.id);
+          counts[event.id] = participants.length; // Total participants (both confirmed and waitlist)
+        } catch (error) {
+          console.error(`Failed to fetch participants for event ${event.id}:`, error);
+          counts[event.id] = event.participants || 0; // Fallback to the existing count
+        }
+      }
+      
+      setEventParticipantCounts(counts);
+    };
+
+    fetchParticipantCounts();
+  }, [events]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteEventApi(id),
@@ -46,7 +70,7 @@ const AdminDashboard: React.FC = () => {
       if (!selectedEventId) return [];
       return getParticipantsApi(selectedEventId);
     },
-    enabled: !!selectedEventId && isParticipantsModalOpen, // Only fetch when modal is open
+    enabled: !!selectedEventId && isParticipantsModalOpen,
   });
 
   // Bulk update participants mutation
@@ -59,25 +83,36 @@ const AdminDashboard: React.FC = () => {
       status: "Confirmed" | "Waitlist";
     }) => bulkUpdateParticipantsApi(ids, status),
     onSuccess: () => {
-      // Invalidate both participants and events queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["participants", selectedEventId] });
       queryClient.invalidateQueries({ queryKey: ["events"] });
+      
+      // Also refetch participant counts
+      if (events.length > 0) {
+        const counts = { ...eventParticipantCounts };
+        events.forEach(event => {
+          // Invalidate the count for this event
+          delete counts[event.id];
+        });
+        setEventParticipantCounts(counts);
+      }
     },
   });
 
   if (isLoading) return <p>Loading...</p>;
 
-  // Stats
+  // Stats - use accurate participant counts
   const totalEvents = events.length;
   const upcomingEvents = events.filter(
     (e: any) => new Date(e.date) > new Date()
   ).length;
+  
   const totalParticipants = events.reduce(
-    (sum: number, e: any) => sum + e.participants,
+    (sum: number, e: any) => sum + (eventParticipantCounts[e.id] || e.participants || 0),
     0
   );
+  
   const totalWaitlist = events.reduce(
-    (sum: number, e: any) => sum + e.waitlist,
+    (sum: number, e: any) => sum + (e.waitlist || 0),
     0
   );
 
@@ -151,74 +186,80 @@ const AdminDashboard: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {events.map((event: any) => (
-              <tr
-                key={event.id}
-                className="border-b hover:bg-gray-50 transition-colors"
-              >
-                <td className="py-4 px-2">
-                  <img
-                    src={event.image}
-                    alt={event.title}
-                    className="w-24 h-24 object-cover rounded-lg shadow-md"
-                  />
-                </td>
-                <td className="py-4 px-2 font-medium text-gray-900">
-                  {event.title}
-                </td>
-                <td className="py-4 px-2 text-gray-700 max-w-xs">
-                  {event.description}
-                </td>
-                <td className="py-4 px-2 text-gray-600">{event.date}</td>
-                <td className="py-4 px-2 text-gray-600">{event.time}</td>
-                <td className="py-4 px-2 text-gray-700">{event.venue}</td>
-                <td className="py-4 px-2 text-gray-700">{event.organiser}</td>
-                <td className="py-4 px-2 text-center">
-                  {event.participantLimit}
-                </td>
-                <td className="py-4 px-2">
-                  <span
-                    className={`px-3 py-1 text-sm rounded-full font-medium
+            {events.map((event: any) => {
+              const totalParticipantsForEvent = eventParticipantCounts[event.id] !== undefined 
+                ? eventParticipantCounts[event.id] 
+                : event.participants || 0;
+              
+              return (
+                <tr
+                  key={event.id}
+                  className="border-b hover:bg-gray-50 transition-colors"
+                >
+                  <td className="py-4 px-2">
+                    <img
+                      src={event.image}
+                      alt={event.title}
+                      className="w-24 h-24 object-cover rounded-lg shadow-md"
+                    />
+                  </td>
+                  <td className="py-4 px-2 font-medium text-gray-900">
+                    {event.title}
+                  </td>
+                  <td className="py-4 px-2 text-gray-700 max-w-xs">
+                    {event.description}
+                  </td>
+                  <td className="py-4 px-2 text-gray-600">{event.date}</td>
+                  <td className="py-4 px-2 text-gray-600">{event.time}</td>
+                  <td className="py-4 px-2 text-gray-700">{event.venue}</td>
+                  <td className="py-4 px-2 text-gray-700">{event.organiser}</td>
+                  <td className="py-4 px-2 text-center">
+                    {event.participantLimit}
+                  </td>
+                  <td className="py-4 px-2">
+                    <span
+                      className={`px-3 py-1 text-sm rounded-full font-medium
     ${event.status === "Confirmed" ? "bg-green-100 text-green-800" : ""}
     ${event.status === "Waitlist" ? "bg-yellow-100 text-yellow-800" : ""}
     ${event.status === "Full" ? "bg-red-100 text-red-800" : ""}
     ${event.status === "Expired" ? "bg-gray-300 text-gray-700" : ""}
   `}
-                  >
-                    {event.status}
-                  </span>
-                </td>
-                <td className="py-4 px-2 text-center font-semibold">
-                  {event.participants}
-                </td>
-                <td className="py-4 px-2 space-y-2 min-w-[200px]">
-                  <button
-                    onClick={() => {
-                      setEditEvent(event);
-                      setIsModalOpen(true);
-                    }}
-                    className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => deleteMutation.mutate(event.id)}
-                    className="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                  >
-                    Delete
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedEventId(event.id);
-                      setIsParticipantsModalOpen(true);
-                    }}
-                    className="w-full px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
-                  >
-                    View Participants
-                  </button>
-                </td>
-              </tr>
-            ))}
+                    >
+                      {event.status}
+                    </span>
+                  </td>
+                  <td className="py-4 px-2 text-center font-semibold">
+                    {totalParticipantsForEvent}
+                  </td>
+                  <td className="py-4 px-2 space-y-2 min-w-[200px]">
+                    <button
+                      onClick={() => {
+                        setEditEvent(event);
+                        setIsModalOpen(true);
+                      }}
+                      className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteMutation.mutate(event.id)}
+                      className="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedEventId(event.id);
+                        setIsParticipantsModalOpen(true);
+                      }}
+                      className="w-full px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                    >
+                      View Participants
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
